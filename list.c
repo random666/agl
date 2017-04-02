@@ -12,35 +12,39 @@ struct list
 struct list *head;
 
 extern struct list *get_head();
+extern void insert (int i, int j);
+extern void delete (int k);
 
-void list_init()
+void init (int data)
 {
 	head = (struct list *) malloc (sizeof (struct list));
-	head->key = 0;
+	head->key = data;
 	head->left = NULL;
 	head->right = NULL;
 }
 
 
-void list_add_left (int data)
+
+void populate (int len)
 {
-	struct list *iterator;
-	if (head == NULL)
-		list_init();
-	iterator = head;
-	while (iterator->left != NULL)
-		iterator = iterator->left;
-	iterator->left = (struct list *) malloc (sizeof (struct list));
-	iterator->left->key = data;
+	int i, j;
+	for (i = 1, j = len ; i < len; ++i,--j)
+		insert (i,j);
 }
 
+void empty (int len)
+{
+	int i;
+	for (i = len; i > 1; --i)
+		delete (i);
+}
 
 void list_add_right (int data)
 {
 	head = get_head();
 	struct list *iterator;
 	if (head == NULL)
-		list_init();
+		init(0);
 	iterator = head;
 	while (iterator->right != NULL)
 		iterator = iterator->right;
@@ -89,43 +93,6 @@ void insert (int position, int data)
 	}
 }
 
-void delete (int position)
-{
-	head = get_head();
-	struct list *temp = head;
-	int count = 1;
-
-	if (position == 1)
-	{
-		temp = head;
-		if (temp->right != NULL)
-		{
-			head = temp->right;
-			head->left = NULL;
-			free (temp);
-		}
-	}
-	else
-	{
-		while (temp->right != NULL && count != position)
-		{
-			temp = temp->right;
-			++count;
-		}
-		if (temp->right == NULL)
-		{
-			temp->left->right == NULL;
-			free (temp);
-		} 
-		else if (count == position) 
-		{
-			temp->left->right = temp->right;
-			temp->right->left = temp->left;
-			free (temp);
-		}
-	}
-}
-
 int count ()
 {
 	head = get_head();
@@ -143,11 +110,11 @@ void print ()
 {
 	head = get_head();
 	printf ("Print list\n");
-	struct list *iterator_right = head;
-	while (iterator_right != NULL)
+	struct list *iterator = head;
+	while (iterator != NULL)
 	{
-		printf ("%d\n", iterator_right->key);
-		iterator_right = iterator_right->right;
+		printf ("%d\n", iterator->key);
+		iterator = iterator->right;
 	}
 }
 
@@ -186,6 +153,12 @@ struct list *find (int position)
 
 void swap (int i, int k)
 {
+	if (k < i)
+	{
+		int temp = k;
+		k = i;
+		i = temp;
+	}
 	struct list *temp_1 = find (i);
 	struct list *temp_2 = find (k);
 	struct list *temp = malloc (sizeof (struct list));
@@ -214,16 +187,20 @@ void swap (int i, int k)
 			temp_1->right = temp_2->right;
 			if (temp_2->left != NULL)
 				temp_2->left->right = temp_1;
-			if (temp_2->right->left != NULL)
+			if (temp_2->right != NULL)
 				temp_2->right->left = temp_1;
 			temp_2->left = temp->left;
 			temp_2->right = temp->right;
 		}
 	}
+	free (temp);
 }
 
 struct list *get_head()
 {
+	if (head == NULL)
+		init(0);
+
 	while (head->left != NULL)
 		head = head->left;
 	return head;
@@ -231,7 +208,20 @@ struct list *get_head()
 
 int pivot (int l, int r)
 {
-
+	struct list *temp = find (r - 1);
+	int i = l - 1;
+	int j;
+	for (j = l; j < r - 1; ++j)
+	{
+		struct list *cur = find (j);
+		if (cur->key < temp->key)
+		{
+			i++;
+			swap (i,j);
+		}
+	}
+	swap (i + 1,r - 1);
+	return i + 1;
 }
 
 void quick_sort (int l, int r)
@@ -240,10 +230,27 @@ void quick_sort (int l, int r)
 	{
 		int p = pivot (l, r);
 		quick_sort (l, p);
-		quick_sort (p+1, l); 
+		quick_sort (p + 1, r); 
 	}
 }
 
+
+void move (int to, int from)
+{
+	struct list *move = find (from);
+	struct list *temp = find (to);
+	
+	if (move->right != NULL)
+		move->right->left = move->left;
+	if (move->left != NULL)
+		move->left->right = move->right;
+
+	move->right = temp;
+	move->left = temp->left;
+	if (temp->left != NULL)
+		temp->left->right = move;
+	temp->left = move;
+}
 
 void insert_sort ()
 {
@@ -261,19 +268,98 @@ void insert_sort ()
 			--j;
 		}
 		++j;
-		swap (j,i);
+		move (j,i);
 	}
 }
 
+void delete (int position)
+{
+	head = get_head();
+	struct list *temp = head;
+	int count = 0;
+	if (position == 0)
+		return;
+
+	while (temp->right != NULL && count != position)
+	{
+		temp = temp->right;
+		++count;
+	}
+	if (temp->right == NULL)
+	{
+		if (temp->left != NULL)
+			temp->left->right = NULL;
+		free (temp);
+	} 
+	else if (count == position) 
+	{
+		temp->left->right = temp->right;
+		temp->right->left = temp->left;
+		free (temp);
+	}
+}
+
+void moveback (int i)
+{
+	struct list *last;
+	head = get_head();
+	last = head;
+	while (last->right != NULL)
+		last = last->right;
+	struct list *temp = find (i);
+	
+	if (temp->left != NULL)
+		temp->left->right = temp->right;
+	if (temp->right != NULL)
+		temp->right->left = temp->right;
+	temp->left = last;
+	last->right = temp;
+	temp->right = NULL;
+}
+
+void merge (int l, int m, int r)
+{
+	struct list *temp1;
+	struct list *temp2;
+	int i,j;
+	i = l;
+	j = m;
+	int len = m;
+	while (i < len && j < r)
+	{
+		temp1 = find (i);
+		temp2 = find (j);
+		if (temp1->key > temp2->key)
+		{
+			move (i,j);
+			++i;
+			++j;
+			++len;
+		} else {
+			++i;
+			++len;
+		}
+	}
+}
+
+void merge_sort (int l, int r)
+{
+	if ((r - l) > 1)
+	{
+		int mid = (r + l) / 2;
+		merge_sort (l, mid);
+		merge_sort (mid, r);
+		merge (l, mid, r);
+	}
+}
+
+
 int main()
 {
-	list_init();
-	int i = 1;
-	int j = 9;
-	for ( ; i < 10; ++i,--j)
-		insert (i,j);
+	init(0);
+	populate (10);
 	print ();
-	swap (0,1);
+	merge_sort (0, 10);
 	print ();
 	return 0;
 }
